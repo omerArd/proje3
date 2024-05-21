@@ -1,75 +1,118 @@
-import nltk
-from nltk.corpus import stopwords
-from collections import Counter
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import nltk # Doğal dil işleme kütüphanesi olan NLTK'yi içe aktarma
+from nltk.corpus import stopwords # NLTK'nin stopwords modülünü içe aktarma
+from collections import Counter # Koleksiyon modülünden Counter sınıfını içe aktarma
+import tkinter as tk  # Tkinter kütüphanesini içe GUI için içe aktarma
+from tkinter import filedialog, messagebox # Tkinter'dan dosya dialog ve mesaj kutusu modüllerini içe aktarma
 
-# Stopwords verilerini imdirerek etkisiz kelimeleri görüyoruz
+# NLTK'nin durak kelimeler listesini indirme (stopwords)
 nltk.download('stopwords')
 
+# Türkçe durak kelimeler listesi (stopwords)
+turkce_stopwords = set([
+    "acaba", "ama", "aslında", "az", "bazı", "belki", "biri", "birkaç", "birçok", "bu", 
+    "çünkü", "da", "daha", "de", "defa", "diye", "eğer", "en", "gibi", "hem", "hep", 
+    "hepsi", "her", "hiç", "için", "ile", "ise", "kez", "ki", "kim", "mı", "mu", "mü", 
+    "nasıl", "ne", "neden", "nerde", "nerede", "nereye", "niçin", "niye", "o", "sanki", 
+    "şayet", "şey", "siz", "şu", "tüm", "ve", "veya", "ya", "yani"])
+
 class MetinAnalizi:
-    def __init__(self, metin):
-        self.metin = metin.lower()
-        self.kelimeler = self.metin.split()
-        # NLTK kütüphanesinden stopwords modülünü kullanarak İngilizce durak kelimeler listesini alır ve bu listeyi bir kümeye dönüştürür.
-        self.etkisiz_kelimeler = set(stopwords.words('english'))
+    def __init__(self, metin, dil="tr"):
+        self.metin = metin.lower() # Girilen metni küçük harflere dönüştürür.
+        self.kelimeler = self.metin.split() # Metni boşluklara göre bölerek kelimeleri bulma amaçlanır
+        
+        if dil == "tr":
+            self.etkisiz_kelimeler = turkce_stopwords # Eğer dil Türkçe ise, Türkçe etkisiz kelimeler kullanılır
+        else:
+            self.etkisiz_kelimeler = set(stopwords.words(dil)) # Dil Türkçe değilse NLTK'nin etkisiz kelimeleri kullanılır
 
-    def harf_sayisi(self):
-        # metin içindeki harflerin sayısını döndürür
-        return sum(c.isalpha() for c in self.metin)
+    def harf_sayisi(self): # Metindeki harflerin sayısını hesaplayan fonksiyon
+        harf_sayisi = 0
+        for c in self.metin:
+            if c.isalpha():
+                harf_sayisi += 1
+        return harf_sayisi
 
-    def kelime_sayisi(self):
-        return len(self.kelimeler)
+    def kelime_sayisi(self): # Metindeki kelime sayısını hesaplayan fonksiyon
+        kelime_sayisi = len(self.kelimeler)
+        return kelime_sayisi
 
-    def etkisiz_kelime_sayisi(self):
-        # metin içindeki etkisiz keilmelerin sayısını döndürür
-        return sum(kelime in self.etkisiz_kelimeler for kelime in self.kelimeler)
+    def etkisiz_kelime_sayisi(self): # Metindeki etkisiz kelime sayısını hesaplayan fonksiyon
+        etkisiz_kelime_sayisi = 0
+        for kelime in self.kelimeler:
+            if kelime in self.etkisiz_kelimeler:
+                etkisiz_kelime_sayisi += 1
+        return etkisiz_kelime_sayisi
 
-    def en_cok_gecen_kelimeler(self, n=5):
-        # metin içinde en çok geçen kelimeleri ve metinde kaç kere geçtiğini döndürür
-        kelimeler = [kelime for kelime in self.kelimeler if kelime not in self.etkisiz_kelimeler]
-        return Counter(kelimeler).most_common(n)
+    def en_cok_gecen_kelimeler(self, n=5): # Metinde en çok geçen kelimeleri döndürür
+        kelimeler = []
+        for kelime in self.kelimeler:
+            if kelime not in self.etkisiz_kelimeler:
+                kelimeler.append(kelime)
+        en_cok_gecenler = Counter(kelimeler).most_common(n)
+        ''' most_common(n) yöntemi, collections modülündeki Counter sınıfının bir parçasıdır. 
+             Öğelerden en sık tekrar eden n tanesini döndürür. Bu yöntem, öğeleri tekrar sayılarına 
+             göre azalan sırayla sıralar ve en sık görülen n öğeyi bir liste olarak verir.'''
+        return en_cok_gecenler
 
-    def en_az_gecen_kelimeler(self, n=5):
-        # metin içinde en az geçen kelimeleri ve metinde kaç kere geçtiğini döndürür
-        kelimeler = [kelime for kelime in self.kelimeler if kelime not in self.etkisiz_kelimeler]
-        return Counter(kelimeler).most_common()[:-n-1:-1]
+    def en_az_gecen_kelimeler(self, n=5): # Metinde en az geçen kelimeleri döndürür
+        kelimeler = []
+        for kelime in self.kelimeler:
+            if kelime not in self.etkisiz_kelimeler:
+                kelimeler.append(kelime)
+        en_az_gecenler = Counter(kelimeler).most_common()[:-n-1:-1]
+        return en_az_gecenler
 
-    @staticmethod
+    @staticmethod # Statik metot tanımlaması, bu metot sınıf örneği gerektirmez
     def metin_benzerligi(metin1, metin2):
-        kelimeler1 = set(metin1.lower().split())
-        kelimeler2 = set(metin2.lower().split())
-        benzerlik = len(kelimeler1.intersection(kelimeler2)) / len(kelimeler1.union(kelimeler2))
-        return benzerlik * 100
+        ''' set(), Python'da bir veri yapısıdır ve bir küme oluşturur. Küme, benzersiz elemanları
+            içeren bir koleksiyondur. Her bir eleman yalnızca bir kez bulunabilir ve küme içindeki 
+            elemanlar sırasızdır.'''
+        kelimeler1 = set(metin1.lower().split()) # Birinci metni küçük harflere çevirip kelimelere böler ve set yapar.
+        kelimeler2 = set(metin2.lower().split()) # İkinci metni küçük harflere çevirip kelimelere böler ve set yapar.
+        # intersection() yöntemi, iki kümenin kesişimini (ortak elemanlarını) döndürür.
+        # union() yöntemi, iki kümenin birleşimini (tüm elemanlarını içeren küme) döndürür.
+        benzerlik = len(kelimeler1.intersection(kelimeler2)) / len(kelimeler1.union(kelimeler2)) 
+        benzerlik_yuzdesi = benzerlik * 100
+        return benzerlik_yuzdesi
 
-    def kelime_ara(self, kelime):
-        return kelime.lower() in self.kelimeler
+    def kelime_ara(self, kelime): # Metinde kelime arama fonksiyonu
+        aranan_kelime = kelime.lower()
+        bulundu = False
+        for k in self.kelimeler:
+            if k == aranan_kelime:
+                bulundu = True
+                break
+        return bulundu
 
-class MetinAnaliziUygulamasi:
+class MetinAnaliziUygulamasi: # Sınıfın başlatıcısı, kök Tkinter penceresini alır
     def __init__(self, root):
         self.root = root
-        self.root.title("Metin Analizi")
+        self.root.title("Metin Analizi") # Pencere başlığını belirler
 
-        self.metin_alani = tk.Text(self.root, height=40, width=100)
-        self.metin_alani.pack()
+        self.metin_alani = tk.Text(self.root, height=20, width=80) # Metin alanı widget'ını oluşturur
+        self.metin_alani.pack(pady=10) # Metin alanını yerleştirir ve biraz boşluk bırakır
 
-        self.analiz_butonu = tk.Button(self.root, text="Analiz Et", command=self.metin_analiz_et)
-        self.analiz_butonu.pack()
+        self.analiz_butonu = tk.Button(self.root, text="Metin Analiz Et", command=self.metin_analiz_et) # Analiz butonunu oluşturur
+        self.analiz_butonu.pack(pady=5) # Analiz butonunu yerleştirir ve biraz boşluk bırakır
 
-        self.benzerlik_butonu = tk.Button(self.root, text="Metinleri Karşılaştır", command=self.metinleri_karsilastir)
-        self.benzerlik_butonu.pack()
+        self.benzerlik_butonu = tk.Button(self.root, text="Metinleri Karşılaştır", command=self.metinleri_karsilastir) # Benzerlik butonunu oluşturur
+        self.benzerlik_butonu.pack(pady=5) # Benzerlik butonunu yerleştirir ve biraz boşluk bırakır
 
-        self.arama_girdisi = tk.Entry(self.root)
-        self.arama_girdisi.pack()
-        self.arama_butonu = tk.Button(self.root, text="Kelime Ara", command=self.kelime_ara)
-        self.arama_butonu.pack()
+        self.arama_girdisi = tk.Entry(self.root) # Kelime arama girişi widget'ını oluşturur
+        self.arama_girdisi.pack(pady=5) # Arama girişini yerleştirir ve biraz boşluk bırakır
+        self.arama_butonu = tk.Button(self.root, text="Kelime Ara", command=self.kelime_ara) # Arama butonunu oluşturur.
+        self.arama_butonu.pack(pady=5) # Arama butonunu yerleştirir ve biraz boşluk bırakır.
 
-        self.sonuc_etiketi = tk.Label(self.root, text="")
-        self.sonuc_etiketi.pack()
+        self.sonuc_etiketi = tk.Label(self.root, text="", justify="left") # Sonuçları gösterecek etiket widget'ını oluşturur.
+        self.sonuc_etiketi.pack(pady=10) # Sonuç etiketini yerleştirir ve biraz boşluk bırakır.
 
     def metin_analiz_et(self):
-        metin = self.metin_alani.get("1.0", tk.END)
-        analiz = MetinAnalizi(metin)
+        metin = self.metin_alani.get("1.0", tk.END).strip()
+        if not metin:
+            messagebox.showwarning("Uyarı", "Lütfen analiz edilecek bir metin girin.")
+            return
+
+        analiz = MetinAnalizi(metin, dil="tr")
 
         harf_sayisi = analiz.harf_sayisi()
         kelime_sayisi = analiz.kelime_sayisi()
@@ -88,17 +131,24 @@ class MetinAnaliziUygulamasi:
         dosya1 = filedialog.askopenfilename(title="İlk Metin Dosyasını Seçin")
         dosya2 = filedialog.askopenfilename(title="İkinci Metin Dosyasını Seçin")
 
-        if dosya1 and dosya2:
-            with open(dosya1, 'r') as f1, open(dosya2, 'r') as f2:
-                metin1 = f1.read()
-                metin2 = f2.read()
-                benzerlik = MetinAnalizi.metin_benzerligi(metin1, metin2)
-                messagebox.showinfo("Benzerlik", f"Metin Benzerliği: %{benzerlik:.2f}")
+        if not dosya1 or not dosya2:
+            messagebox.showwarning("Uyarı", "Lütfen karşılaştırmak için iki dosya seçin.")
+            return
+
+        with open(dosya1, 'r') as f1, open(dosya2, 'r') as f2:
+            metin1 = f1.read()
+            metin2 = f2.read()
+            benzerlik = MetinAnalizi.metin_benzerligi(metin1, metin2)
+            messagebox.showinfo("Benzerlik", f"Metin Benzerliği: %{benzerlik:.2f}")
 
     def kelime_ara(self):
-        kelime = self.arama_girdisi.get()
+        kelime = self.arama_girdisi.get().strip()
+        if not kelime:
+            messagebox.showwarning("Uyarı", "Lütfen aramak istediğiniz bir kelime girin.")
+            return
+
         metin = self.metin_alani.get("1.0", tk.END)
-        analiz = MetinAnalizi(metin)
+        analiz = MetinAnalizi(metin, dil="tr")
         bulundu = analiz.kelime_ara(kelime)
         messagebox.showinfo("Arama Sonucu", f"Kelime '{kelime}' bulundu: {bulundu}")
 
@@ -106,6 +156,5 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = MetinAnaliziUygulamasi(root)
     root.mainloop()
-
 
 
