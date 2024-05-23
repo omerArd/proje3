@@ -67,10 +67,10 @@ class MetinAnalizi:
         ''' set(), Python'da bir veri yapısıdır ve bir küme oluşturur. Küme, benzersiz elemanları
             içeren bir koleksiyondur. Her bir eleman yalnızca bir kez bulunabilir ve küme içindeki 
             elemanlar sırasızdır.'''
-        kelimeler1 = set(metin1.lower().split()) # Birinci metni küçük harflere çevirip kelimelere böler ve set yapar.
-        kelimeler2 = set(metin2.lower().split()) # İkinci metni küçük harflere çevirip kelimelere böler ve set yapar.
-        # intersection() yöntemi, iki kümenin kesişimini (ortak elemanlarını) döndürür.
-        # union() yöntemi, iki kümenin birleşimini (tüm elemanlarını içeren küme) döndürür.
+        kelimeler1 = set(metin1.lower().split()) # Birinci metni küçük harflere çevirip kelimelere böler ve set yapar
+        kelimeler2 = set(metin2.lower().split()) # İkinci metni küçük harflere çevirip kelimelere böler ve set yapar
+        # intersection() yöntemi, iki kümenin kesişimini (ortak elemanlarını) döndürür
+        # union() yöntemi, iki kümenin birleşimini (tüm elemanlarını içeren küme) döndürür
         benzerlik = len(kelimeler1.intersection(kelimeler2)) / len(kelimeler1.union(kelimeler2)) 
         benzerlik_yuzdesi = benzerlik * 100
         return benzerlik_yuzdesi
@@ -100,19 +100,20 @@ class MetinAnaliziUygulamasi: # Sınıfın başlatıcısı, kök Tkinter pencere
 
         self.arama_girdisi = tk.Entry(self.root) # Kelime arama girişi widget'ını oluşturur
         self.arama_girdisi.pack(pady=5) # Arama girişini yerleştirir ve biraz boşluk bırakır
-        self.arama_butonu = tk.Button(self.root, text="Kelime Ara", command=self.kelime_ara) # Arama butonunu oluşturur.
-        self.arama_butonu.pack(pady=5) # Arama butonunu yerleştirir ve biraz boşluk bırakır.
+        self.arama_butonu = tk.Button(self.root, text="Kelime Ara", command=self.kelime_ara) # Arama butonunu oluşturur
+        self.arama_butonu.pack(pady=5) # Arama butonunu yerleştirir ve biraz boşluk bırakır
 
-        self.sonuc_etiketi = tk.Label(self.root, text="", justify="left") # Sonuçları gösterecek etiket widget'ını oluşturur.
-        self.sonuc_etiketi.pack(pady=10) # Sonuç etiketini yerleştirir ve biraz boşluk bırakır.
+        self.sonuc_etiketi = tk.Label(self.root, text="", justify="left") # Sonuçları gösterecek etiket widget'ını oluşturur
+        self.sonuc_etiketi.pack(pady=10) # Sonuç etiketini yerleştirir ve biraz boşluk bırakır
 
-    def metin_analiz_et(self):
-        metin = self.metin_alani.get("1.0", tk.END).strip()
+    def metin_analiz_et(self): # Metin analizini yapan fonksiyon
+        metin = self.metin_alani.get("1.0", tk.END).strip() # Metin alanındaki metni alır, baştaki ve sondaki boşlukları temizler
+        # Eğer metin boşsa uyarı mesajı gönderilir
         if not metin:
-            messagebox.showwarning("Uyarı", "Lütfen analiz edilecek bir metin girin.")
+            messagebox.showwarning("Uyarı", "Lütfen analiz edilecek bir metin girin!")
             return
 
-        analiz = MetinAnalizi(metin, dil="tr")
+        analiz = MetinAnalizi(metin, dil="tr") # MetinAnalizi sınıfından bir örnek oluşturur.
 
         harf_sayisi = analiz.harf_sayisi()
         kelime_sayisi = analiz.kelime_sayisi()
@@ -125,36 +126,37 @@ class MetinAnaliziUygulamasi: # Sınıfın başlatıcısı, kök Tkinter pencere
                  f"Etkisiz Kelime Sayısı: {etkisiz_kelime_sayisi}\n"
                  f"En Çok Geçen Kelimeler: {en_cok_gecenler}\n"
                  f"En Az Geçen Kelimeler: {en_az_gecenler}")
-        self.sonuc_etiketi.config(text=sonuc)
+        self.sonuc_etiketi.config(text=sonuc) # Sonuç etiketini güncelleme
 
-    def metinleri_karsilastir(self):
-        dosya1 = filedialog.askopenfilename(title="İlk Metin Dosyasını Seçin")
-        dosya2 = filedialog.askopenfilename(title="İkinci Metin Dosyasını Seçin")
+    def metinleri_karsilastir(self): # İki metni karşılaşatıran fonksiyon
+        dosya1 = filedialog.askopenfilename(title="İlk Metin Dosyasını Seçin") # İlk metin için dosyab seçme diyalogunu açar
+        dosya2 = filedialog.askopenfilename(title="İkinci Metin Dosyasını Seçin") # İkinci metin için dosyab seçme diyalogunu açar
 
-        if not dosya1 or not dosya2:
+        if not dosya1 or not dosya2: # Eğer dosyalar seçilmezse uyarı mesajı gönderilir
             messagebox.showwarning("Uyarı", "Lütfen karşılaştırmak için iki dosya seçin.")
             return
 
+        # Dosyaların içeriği okunur   
         with open(dosya1, 'r') as f1, open(dosya2, 'r') as f2:
             metin1 = f1.read()
             metin2 = f2.read()
-            benzerlik = MetinAnalizi.metin_benzerligi(metin1, metin2)
+            benzerlik = MetinAnalizi.metin_benzerligi(metin1, metin2) # Metin benzerliği hesaplanır
             messagebox.showinfo("Benzerlik", f"Metin Benzerliği: %{benzerlik:.2f}")
 
     def kelime_ara(self):
-        kelime = self.arama_girdisi.get().strip()
+        kelime = self.arama_girdisi.get().strip() # Arama girişinden kelimeyi alarak baştaki ve sondaki boşlukları temizler
         if not kelime:
             messagebox.showwarning("Uyarı", "Lütfen aramak istediğiniz bir kelime girin.")
             return
 
-        metin = self.metin_alani.get("1.0", tk.END)
-        analiz = MetinAnalizi(metin, dil="tr")
-        bulundu = analiz.kelime_ara(kelime)
-        messagebox.showinfo("Arama Sonucu", f"Kelime '{kelime}' bulundu: {bulundu}")
+        metin = self.metin_alani.get("1.0", tk.END) # Metin alanından metni alır
+        analiz = MetinAnalizi(metin, dil="tr") # MetinAnalizi sınıfından bir örnek oluşturur
+        bulundu = analiz.kelime_ara(kelime) # Kelime kontrolü yapar
+        messagebox.showinfo("Arama Sonucu", f"Kelime '{kelime}' bulundu: {bulundu}") # Bilgi mesajı verilir
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    root = tk.Tk() # Tkinter ana penceresi oluşturulur
     app = MetinAnaliziUygulamasi(root)
-    root.mainloop()
+    root.mainloop() # Tkinter ana döngüsü başlatılır
 
 
