@@ -151,7 +151,7 @@ class MetinAnaliziUygulamasi: # Sınıfın başlatıcısı, kök Tkinter pencere
             return
 
         # Dosyaların içeriği okunur   
-        with open(dosya1, 'r') as f1, open(dosya2, 'r') as f2:
+        with open(dosya1, 'r', encoding='utf-8') as f1, open(dosya2, 'r', encoding='utf-8') as f2:
             metin1 = f1.read()
             metin2 = f2.read()
             benzerlik = MetinAnalizi.metin_benzerligi_jaccard(metin1, metin2) # Metin benzerliği hesaplanır
@@ -166,7 +166,7 @@ class MetinAnaliziUygulamasi: # Sınıfın başlatıcısı, kök Tkinter pencere
             return
 
         # Dosyaların içeriği okunur   
-        with open(dosya1, 'r') as f1, open(dosya2, 'r') as f2:
+        with open(dosya1, 'r', encoding='utf-8') as f1, open(dosya2, 'r', encoding='utf-8') as f2:
             metin1 = f1.read()
             metin2 = f2.read()
             benzerlik = MetinAnalizi.metin_benzerligi_cosine(metin1, metin2) # Metin benzerliği hesaplanır
