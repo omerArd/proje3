@@ -6,6 +6,11 @@ from tkinter import filedialog, messagebox # Tkinter'dan dosya dialog ve mesaj k
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import sqlite3
+import os
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+from pathlib import Path
 
 # NLTK'nin durak kelimeler listesini indirme (stopwords)
 nltk.download('stopwords')
@@ -17,6 +22,59 @@ turkce_stopwords = set([
     "hepsi", "her", "hiç", "için", "ile", "ise", "kez", "ki", "kim", "mı", "mu", "mü", 
     "nasıl", "ne", "neden", "nerde", "nerede", "nereye", "niçin", "niye", "o", "sanki", 
     "şayet", "şey", "siz", "şu", "tüm", "ve", "veya", "ya", "yani"])
+
+class VeriDepolama:
+    def __init__(self, db_name="metin_analizi.db"):
+        #self.db_path = Path.home() / "Desktop" / db_name  # Veritabanı dosyasını masaüstünde oluşturur
+        self.db_name = db_name
+        self.conn = sqlite3.connect(self.db_name)
+        self.cursor = self.conn.cursor()
+        self.tablo_olustur()
+
+    def tablo_olustur(self):
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Metinler (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                metin TEXT NOT NULL
+            )
+        ''')
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS BenzerlikSonuclari (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                metin1_id INTEGER,
+                metin2_id INTEGER,
+                jaccard REAL,
+                cosine REAL,
+                FOREIGN KEY(metin1_id) REFERENCES Metinler(id),
+                FOREIGN KEY(metin2_id) REFERENCES Metinler(id)
+            )
+        ''')
+        self.conn.commit()
+
+    def metin_ekle(self, metin):
+        self.cursor.execute('''
+            INSERT INTO Metinler (metin) VALUES (?)
+        ''', (metin,))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def benzerlik_sonucu_ekle(self, metin1_id, metin2_id, jaccard, cosine):
+        self.cursor.execute('''
+            INSERT INTO BenzerlikSonuclari (metin1_id, metin2_id, jaccard, cosine) VALUES (?, ?, ?, ?)
+        ''', (metin1_id, metin2_id, jaccard, cosine))
+        self.conn.commit()
+
+    def metinleri_getir(self):
+        self.cursor.execute('SELECT * FROM Metinler')
+        return self.cursor.fetchall()
+
+    def benzerlik_sonuclari_getir(self):
+        self.cursor.execute('SELECT * FROM BenzerlikSonuclari')
+        return self.cursor.fetchall()
+
+    def kapat(self):
+        self.conn.close()
+
 
 class MetinAnalizi:
     def __init__(self, metin, dil="tr"):
@@ -95,40 +153,43 @@ class MetinAnalizi:
                 break
         return bulundu
 
-class MetinAnaliziUygulamasi: # Sınıfın başlatıcısı, kök Tkinter penceresini alır
+class MetinAnaliziUygulamasi: 
     def __init__(self, root):
         self.root = root
-        self.root.title("Metin Analizi") # Pencere başlığını belirler
+        self.root.title("Metin Analizi") 
 
-        self.metin_alani = tk.Text(self.root, height=20, width=80) # Metin alanı widget'ını oluşturur
-        self.metin_alani.pack(pady=10) # Metin alanını yerleştirir ve biraz boşluk bırakır
+        self.veri_depolama = VeriDepolama()  # VeriDepolama sınıfından bir örnek oluşturur
 
-        self.analiz_butonu = tk.Button(self.root, text="Metin Analiz Et", command=self.metin_analiz_et) # Analiz butonunu oluşturur
-        self.analiz_butonu.pack(pady=5) # Analiz butonunu yerleştirir ve biraz boşluk bırakır
+        self.metin_alani = tk.Text(self.root, height=20, width=80)
+        self.metin_alani.pack(pady=10)
 
-        self.benzerlik_butonu_jaccard = tk.Button(self.root, text="Metinleri Karşılaştır (Jaccard)", command=self.metinleri_karsilastir_jaccard) # Benzerlik butonunu oluşturur
-        self.benzerlik_butonu_jaccard.pack(pady=5) # Benzerlik butonunu yerleştirir ve biraz boşluk bırakır
-        
-        self.benzerlik_butonu_cosine = tk.Button(self.root, text="Metinleri Karşılaştır (Cosine)", command=self.metinleri_karsilastir_cosine) # Cosine benzerlik butonunu oluşturur
-        self.benzerlik_butonu_cosine.pack(pady=5) # Cosine benzerlik butonunu yerleştirir ve biraz boşluk bırakır
+        self.analiz_butonu = tk.Button(self.root, text="Metin Analiz Et", command=self.metin_analiz_et)
+        self.analiz_butonu.pack(pady=5)
 
-        self.arama_girdisi = tk.Entry(self.root) # Kelime arama girişi widget'ını oluşturur
-        self.arama_girdisi.pack(pady=5) # Arama girişini yerleştirir ve biraz boşluk bırakır
-        self.arama_butonu = tk.Button(self.root, text="Kelime Ara", command=self.kelime_ara) # Arama butonunu oluşturur
-        self.arama_butonu.pack(pady=5) # Arama butonunu yerleştirir ve biraz boşluk bırakır
+        self.benzerlik_butonu_jaccard = tk.Button(self.root, text="Metinleri Karşılaştır (Jaccard)", command=self.metinleri_karsilastir_jaccard)
+        self.benzerlik_butonu_jaccard.pack(pady=5)
 
-        self.sonuc_etiketi = tk.Label(self.root, text="", justify="left") # Sonuçları gösterecek etiket widget'ını oluşturur
-        self.sonuc_etiketi.pack(pady=10) # Sonuç etiketini yerleştirir ve biraz boşluk bırakır
+        self.benzerlik_butonu_cosine = tk.Button(self.root, text="Metinleri Karşılaştır (Cosine)", command=self.metinleri_karsilastir_cosine)
+        self.benzerlik_butonu_cosine.pack(pady=5)
 
-    def metin_analiz_et(self): # Metin analizini yapan fonksiyon
-        metin = self.metin_alani.get("1.0", tk.END).strip() # Metin alanındaki metni alır, baştaki ve sondaki boşlukları temizler
-        # Eğer metin boşsa uyarı mesajı gönderilir
+        self.arama_girdisi = tk.Entry(self.root)
+        self.arama_girdisi.pack(pady=5)
+        self.arama_butonu = tk.Button(self.root, text="Kelime Ara", command=self.kelime_ara)
+        self.arama_butonu.pack(pady=5)
+
+        self.sonuc_etiketi = tk.Label(self.root, text="", justify="left")
+        self.sonuc_etiketi.pack(pady=10)
+
+        self.veri_yonetimi_butonu = tk.Button(self.root, text="Veri Yönetimi", command=self.veri_yonetimi)
+        self.veri_yonetimi_butonu.pack(pady=5)
+
+    def metin_analiz_et(self):
+        metin = self.metin_alani.get("1.0", tk.END).strip()
         if not metin:
             messagebox.showwarning("Uyarı", "Lütfen analiz edilecek bir metin girin!")
             return
 
-        analiz = MetinAnalizi(metin, dil="tr") # MetinAnalizi sınıfından bir örnek oluşturur.
-
+        analiz = MetinAnalizi(metin, dil="tr")
         harf_sayisi = analiz.harf_sayisi()
         kelime_sayisi = analiz.kelime_sayisi()
         etkisiz_kelime_sayisi = analiz.etkisiz_kelime_sayisi()
@@ -140,50 +201,83 @@ class MetinAnaliziUygulamasi: # Sınıfın başlatıcısı, kök Tkinter pencere
                  f"Etkisiz Kelime Sayısı: {etkisiz_kelime_sayisi}\n"
                  f"En Çok Geçen Kelimeler: {en_cok_gecenler}\n"
                  f"En Az Geçen Kelimeler: {en_az_gecenler}")
-        self.sonuc_etiketi.config(text=sonuc) # Sonuç etiketini güncelleme
+        self.sonuc_etiketi.config(text=sonuc)
 
-    def metinleri_karsilastir_jaccard(self): # İki metni karşılaştıran fonksiyon (Jaccard)
-        dosya1 = filedialog.askopenfilename(title="İlk Metin Dosyasını Seçin") # İlk metin için dosya seçme diyalogunu açar
-        dosya2 = filedialog.askopenfilename(title="İkinci Metin Dosyasını Seçin") # İkinci metin için dosya seçme diyalogunu açar
+        metin_id = self.veri_depolama.metin_ekle(metin)  # Metni veritabanına ekler
 
-        if not dosya1 or not dosya2: # Eğer dosyalar seçilmezse uyarı mesajı gönderilir
+    def metinleri_karsilastir_jaccard(self):
+        dosya1 = filedialog.askopenfilename(title="İlk Metin Dosyasını Seçin")
+        dosya2 = filedialog.askopenfilename(title="İkinci Metin Dosyasını Seçin")
+
+        if not dosya1 or not dosya2:
             messagebox.showwarning("Uyarı", "Lütfen karşılaştırmak için iki dosya seçin.")
             return
 
-        # Dosyaların içeriği okunur   
         with open(dosya1, 'r', encoding='utf-8') as f1, open(dosya2, 'r', encoding='utf-8') as f2:
             metin1 = f1.read()
             metin2 = f2.read()
-            benzerlik = MetinAnalizi.metin_benzerligi_jaccard(metin1, metin2) # Metin benzerliği hesaplanır
+            benzerlik = MetinAnalizi.metin_benzerligi_jaccard(metin1, metin2)
             messagebox.showinfo("Benzerlik (Jaccard)", f"Metin Benzerliği (Jaccard): %{benzerlik:.2f}")
 
-    def metinleri_karsilastir_cosine(self): # İki metni karşılaştıran fonksiyon (Cosine)
-        dosya1 = filedialog.askopenfilename(title="İlk Metin Dosyasını Seçin") # İlk metin için dosya seçme diyalogunu açar
-        dosya2 = filedialog.askopenfilename(title="İkinci Metin Dosyasını Seçin") # İkinci metin için dosya seçme diyalogunu açar
+            metin1_id = self.veri_depolama.metin_ekle(metin1)
+            metin2_id = self.veri_depolama.metin_ekle(metin2)
+            self.veri_depolama.benzerlik_sonucu_ekle(metin1_id, metin2_id, benzerlik, None)
 
-        if not dosya1 or not dosya2: # Eğer dosyalar seçilmezse uyarı mesajı gönderilir
+    def metinleri_karsilastir_cosine(self):
+        dosya1 = filedialog.askopenfilename(title="İlk Metin Dosyasını Seçin")
+        dosya2 = filedialog.askopenfilename(title="İkinci Metin Dosyasını Seçin")
+
+        if not dosya1 or not dosya2:
             messagebox.showwarning("Uyarı", "Lütfen karşılaştırmak için iki dosya seçin.")
             return
 
-        # Dosyaların içeriği okunur   
         with open(dosya1, 'r', encoding='utf-8') as f1, open(dosya2, 'r', encoding='utf-8') as f2:
             metin1 = f1.read()
             metin2 = f2.read()
-            benzerlik = MetinAnalizi.metin_benzerligi_cosine(metin1, metin2) # Metin benzerliği hesaplanır
+            benzerlik = MetinAnalizi.metin_benzerligi_cosine(metin1, metin2)
             messagebox.showinfo("Benzerlik (Cosine)", f"Metin Benzerliği (Cosine): %{benzerlik:.2f}")
 
+            metin1_id = self.veri_depolama.metin_ekle(metin1)
+            metin2_id = self.veri_depolama.metin_ekle(metin2)
+            self.veri_depolama.benzerlik_sonucu_ekle(metin1_id, metin2_id, None, benzerlik)
+
     def kelime_ara(self):
-        kelime = self.arama_girdisi.get().strip() # Arama girişinden kelimeyi alarak baştaki ve sondaki boşlukları temizler
+        kelime = self.arama_girdisi.get().strip()
         if not kelime:
             messagebox.showwarning("Uyarı", "Lütfen aramak istediğiniz bir kelime girin.")
             return
 
-        metin = self.metin_alani.get("1.0", tk.END) # Metin alanından metni alır
-        analiz = MetinAnalizi(metin, dil="tr") # MetinAnalizi sınıfından bir örnek oluşturur
-        bulundu = analiz.kelime_ara(kelime) # Kelime kontrolü yapar
-        messagebox.showinfo("Arama Sonucu", f"Kelime '{kelime}' bulundu: {bulundu}") # Bilgi mesajı verilir
+        metin = self.metin_alani.get("1.0", tk.END)
+        analiz = MetinAnalizi(metin, dil="tr")
+        bulundu = analiz.kelime_ara(kelime)
+        messagebox.showinfo("Arama Sonucu", f"Kelime '{kelime}' bulundu: {bulundu}")
+
+    def veri_yonetimi(self):
+        def verileri_goster():
+            metinler = self.veri_depolama.metinleri_getir()
+            for metin in metinler:
+                tree.insert("", tk.END, values=metin)
+
+        def sonuclari_goster():
+            sonuclar = self.veri_depolama.benzerlik_sonuclari_getir()
+            for sonuc in sonuclar:
+                tree.insert("", tk.END, values=sonuc)
+
+        pencere = tk.Toplevel(self.root)
+        pencere.title("Veri Yönetimi")
+
+        tree = ttk.Treeview(pencere, columns=("ID", "Metin"))
+        tree.heading("ID", text="ID")
+        tree.heading("Metin", text="Metin")
+        tree.pack()
+
+        metinleri_goster_butonu = tk.Button(pencere, text="Metinleri Göster", command=verileri_goster)
+        metinleri_goster_butonu.pack(pady=5)
+
+        sonuclari_goster_butonu = tk.Button(pencere, text="Sonuçları Göster", command=sonuclari_goster)
+        sonuclari_goster_butonu.pack(pady=5)
 
 if __name__ == "__main__":
-    root = tk.Tk() # Tkinter ana penceresi oluşturulur
+    root = tk.Tk()
     app = MetinAnaliziUygulamasi(root)
-    root.mainloop() # Tkinter ana döngüsü başlatılır
+    root.mainloop()
